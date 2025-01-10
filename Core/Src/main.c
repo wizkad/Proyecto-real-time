@@ -87,6 +87,13 @@ const osThreadAttr_t RecibirUART_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
+/* Definitions for MandarUART */
+osThreadId_t MandarUARTHandle;
+const osThreadAttr_t MandarUART_attributes = {
+  .name = "MandarUART",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* Definitions for frecuenciaUltrasonido */
 osMessageQueueId_t frecuenciaUltrasonidoHandle;
 const osMessageQueueAttr_t frecuenciaUltrasonido_attributes = {
@@ -101,6 +108,11 @@ const osMessageQueueAttr_t frecuenciaConstante_attributes = {
 osMessageQueueId_t frecuenciaLogHandle;
 const osMessageQueueAttr_t frecuenciaLog_attributes = {
   .name = "frecuenciaLog"
+};
+/* Definitions for MandarUARTqueue */
+osMessageQueueId_t MandarUARTqueueHandle;
+const osMessageQueueAttr_t MandarUARTqueue_attributes = {
+  .name = "MandarUARTqueue"
 };
 /* Definitions for Mutex */
 osMutexId_t MutexHandle;
@@ -127,6 +139,7 @@ void LecturaPines(void *argument);
 void Ultrasound(void *argument);
 void BuzzerA(void *argument);
 void Recibir_UART(void *argument);
+void Mandar_UART(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -201,6 +214,9 @@ int main(void)
   /* creation of frecuenciaLog */
   frecuenciaLogHandle = osMessageQueueNew (16, sizeof(uint16_t), &frecuenciaLog_attributes);
 
+  /* creation of MandarUARTqueue */
+  MandarUARTqueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &MandarUARTqueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -220,6 +236,9 @@ int main(void)
 
   /* creation of RecibirUART */
   RecibirUARTHandle = osThreadNew(Recibir_UART, NULL, &RecibirUART_attributes);
+
+  /* creation of MandarUART */
+  MandarUARTHandle = osThreadNew(Mandar_UART, NULL, &MandarUART_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
 
@@ -561,8 +580,9 @@ void UARTCommand(char *comando)
 		 //Comando recibido: SRC
 		 EntradaBuzzer = atoi(comando + 4);
 		 memset(buffer, 0, sizeof(buffer));
-		 sprintf(buffer,"Entrada cambiada: %d\n",EntradaBuzzer);
-		 HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+		 sprintf(buffer,"Entrada cambiada: %d",EntradaBuzzer);
+		 osMessageQueuePut(MandarUARTqueueHandle,&buffer,8U,osWaitForever);
+		 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
 
 	 } else if (strncmp(comando, "FREQ", 4) == 0) {
 		 frecuencia = atoi(comando + 5);  // Extrae la frecuencia
@@ -571,23 +591,27 @@ void UARTCommand(char *comando)
 			 FrecuenciaBuzzer = frecuencia;
 			 memset(buffer, 0, sizeof(buffer));
              sprintf(buffer,"Frecuencia: %d\n", frecuencia);
-			 HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
-			 osMessageQueuePut(frecuenciaConstanteHandle,&frecuencia,0,0);
+			 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+			 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
+			 osMessageQueuePut(frecuenciaConstanteHandle,&frecuencia,0U,0U);
 		 } else {
 			 memset(buffer, 0, sizeof(buffer));
 			 sprintf(buffer,"Frecuencia no valida\n");
-			 HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+			 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+			 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
 		 }
 	 }
 
 		 else if (strncmp(comando, "frecuencia", 10) == 0) {
 			 memset(buffer, 0, sizeof(buffer));
 			 sprintf(buffer,"#%d#", FrecuenciaMandar);
-			 HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+			 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+			 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
 	 } else {
 		 memset(buffer, 0, sizeof(buffer));
 		 sprintf(buffer,"Comando no valido\n");
-		 HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+		 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+		 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
 	 }
 }
 /* USER CODE END 4 */
@@ -689,8 +713,7 @@ void BuzzerA(void *argument)
 	  		  osMessageQueueGet(frecuenciaUltrasonidoHandle,&frecuencia,NULL,osWaitForever);}
 	  if(EntradaBuzzer == 2){
 	  		  osMessageQueueGet(frecuenciaConstanteHandle,&frecuencia,NULL,osWaitForever);}
-	  //if(EntradaBuzzer == 3){
-	  	//osMessageQueueGet(frecuenciaLogHandle,&frecuencia,NULL,osWaitForever);}
+
 
 	  HAL_TIM_Base_Stop_IT(&htim3);
 	  __HAL_TIM_SET_COUNTER(&htim3, 0);
@@ -724,10 +747,34 @@ void Recibir_UART(void *argument)
   /* Infinite loop */
   for(;;)
   {
+
 	HAL_UART_Receive_IT(&huart2, (uint8_t*)rxBuffer, 1);
     osDelay(1);
   }
   /* USER CODE END Recibir_UART */
+}
+
+/* USER CODE BEGIN Header_Mandar_UART */
+/**
+* @brief Function implementing the MandarUART thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Mandar_UART */
+void Mandar_UART(void *argument)
+{
+  /* USER CODE BEGIN Mandar_UART */
+	char mandar[30];
+  /* Infinite loop */
+  for(;;)
+  {
+	  memset(mandar, 0, sizeof(mandar));
+	osMessageQueueGet(MandarUARTqueueHandle,&mandar,NULL,osWaitForever);
+	HAL_UART_Transmit(&huart2,(uint8_t*)mandar,sizeof(mandar),10);
+
+    osDelay(1);
+  }
+  /* USER CODE END Mandar_UART */
 }
 
 /**
