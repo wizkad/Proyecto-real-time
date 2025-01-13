@@ -124,6 +124,11 @@ osEventFlagsId_t PinPollingHandle;
 const osEventFlagsAttr_t PinPolling_attributes = {
   .name = "PinPolling"
 };
+/* Definitions for UARTsend */
+osEventFlagsId_t UARTsendHandle;
+const osEventFlagsAttr_t UARTsend_attributes = {
+  .name = "UARTsend"
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -215,7 +220,7 @@ int main(void)
   frecuenciaLogHandle = osMessageQueueNew (16, sizeof(uint16_t), &frecuenciaLog_attributes);
 
   /* creation of MandarUARTqueue */
-  MandarUARTqueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &MandarUARTqueue_attributes);
+  MandarUARTqueueHandle = osMessageQueueNew (30, sizeof(uint8_t), &MandarUARTqueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -247,6 +252,9 @@ int main(void)
 
   /* creation of PinPolling */
   PinPollingHandle = osEventFlagsNew(&PinPolling_attributes);
+
+  /* creation of UARTsend */
+  UARTsendHandle = osEventFlagsNew(&UARTsend_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   osEventFlagsSet(PinPollingHandle,0x0002U);
@@ -500,7 +508,7 @@ uint16_t timcounter;
 #define FREQ_MAX_HZ 5000    // Frecuencia máxima (5 kHz)
 
 //Variables para la transmision UART
-#define BUFFER_SIZE 20   // Maximum size of the command buffer
+char txbuffer[30];
 char rxBuffer[1];           // Buffer for single-byte UART reception
 char Buffer[20];  // Buffer to store the command
 uint16_t cmdIndice = 0;      // Indice para controlar los datos
@@ -542,6 +550,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_7);
 	}
 }
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef * huart){
+}
 
 //Callback USART2
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -558,8 +568,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 	            // Reinicia el indice
 	            cmdIndice = 0;
-	            memset(Buffer, 0, BUFFER_SIZE);
-	        } else if (cmdIndice < BUFFER_SIZE - 1) {
+	            memset(Buffer, 0, sizeof(Buffer));
+	        } else if (cmdIndice < sizeof(Buffer) - 1) {
 	            // Añade el char al siguiente espacio
 	            Buffer[cmdIndice++] = rxChar;
 	        } else {
@@ -574,45 +584,32 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void UARTCommand(char *comando)
 {
-	char buffer[30];
 	uint16_t frecuencia;
 	 if (strncmp(comando, "SRC", 3) == 0) {
 		 //Comando recibido: SRC
 		 EntradaBuzzer = atoi(comando + 4);
-		 memset(buffer, 0, sizeof(buffer));
-		 sprintf(buffer,"Entrada cambiada: %d",EntradaBuzzer);
-		 osMessageQueuePut(MandarUARTqueueHandle,&buffer,8U,osWaitForever);
-		 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
+		 memset(txbuffer,0,sizeof(txbuffer));
+		 sprintf(txbuffer,"#Entrada cambiada: %d#",EntradaBuzzer);
 
 	 } else if (strncmp(comando, "FREQ", 4) == 0) {
 		 frecuencia = atoi(comando + 5);  // Extrae la frecuencia
-		 EntradaBuzzer = 2;
 		 if((frecuencia>=2000) && (frecuencia<=5000)){
 			 FrecuenciaBuzzer = frecuencia;
-			 memset(buffer, 0, sizeof(buffer));
-             sprintf(buffer,"Frecuencia: %d\n", frecuencia);
-			 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
-			 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
+			 memset(txbuffer,0,sizeof(txbuffer));
+             sprintf(txbuffer,"#Frecuencia: %d#", frecuencia);
 			 osMessageQueuePut(frecuenciaConstanteHandle,&frecuencia,0U,0U);
 		 } else {
-			 memset(buffer, 0, sizeof(buffer));
-			 sprintf(buffer,"Frecuencia no valida\n");
-			 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
-			 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
+			 memset(txbuffer,0,sizeof(txbuffer));
+			 sprintf(txbuffer,"#Frecuencia no valida#");
 		 }
-	 }
-
-		 else if (strncmp(comando, "frecuencia", 10) == 0) {
-			 memset(buffer, 0, sizeof(buffer));
-			 sprintf(buffer,"#%d#", FrecuenciaMandar);
-			 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
-			 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
+	 } else if (strncmp(comando, "frecuencia", 10) == 0) {
+			 memset(txbuffer,0,sizeof(txbuffer));
+			 sprintf(txbuffer,"#%d#", FrecuenciaMandar);
 	 } else {
-		 memset(buffer, 0, sizeof(buffer));
-		 sprintf(buffer,"Comando no valido\n");
-		 //HAL_UART_Transmit(&huart2,(uint8_t*)buffer,sizeof(buffer), 10);
-		 osMessageQueuePut(MandarUARTqueueHandle,&buffer,0U,0U);
+		 memset(txbuffer,0,sizeof(txbuffer));
+		 sprintf(txbuffer,"#Comando no valido#");
 	 }
+	 osEventFlagsSet(UARTsendHandle,0x0001U);
 }
 /* USER CODE END 4 */
 
@@ -660,7 +657,6 @@ void LecturaPines(void *argument)
 	  }
 	  if(pulso != 0){
 		  uint16_t frecuencia = TiempoaFrecuencia(pulso);
-		  FrecuenciaMandar = frecuencia;
 		  osMessageQueuePut(frecuenciaUltrasonidoHandle,&frecuencia,0,0);
 	  }
 	  osDelay(1);
@@ -710,10 +706,12 @@ void BuzzerA(void *argument)
   for(;;)
   {
 	  if(EntradaBuzzer == 1){
-	  		  osMessageQueueGet(frecuenciaUltrasonidoHandle,&frecuencia,NULL,osWaitForever);}
+	  		  osMessageQueueGet(frecuenciaUltrasonidoHandle,&frecuencia,NULL,osWaitForever);
+	  }
 	  if(EntradaBuzzer == 2){
-	  		  osMessageQueueGet(frecuenciaConstanteHandle,&frecuencia,NULL,osWaitForever);}
-
+	  		  osMessageQueueGet(frecuenciaConstanteHandle,&frecuencia,NULL,osWaitForever);
+	  }
+	  FrecuenciaMandar = frecuencia;
 
 	  HAL_TIM_Base_Stop_IT(&htim3);
 	  __HAL_TIM_SET_COUNTER(&htim3, 0);
@@ -764,14 +762,11 @@ void Recibir_UART(void *argument)
 void Mandar_UART(void *argument)
 {
   /* USER CODE BEGIN Mandar_UART */
-	char mandar[30];
   /* Infinite loop */
   for(;;)
   {
-	  memset(mandar, 0, sizeof(mandar));
-	osMessageQueueGet(MandarUARTqueueHandle,&mandar,NULL,osWaitForever);
-	HAL_UART_Transmit(&huart2,(uint8_t*)mandar,sizeof(mandar),10);
-
+	  osEventFlagsWait(UARTsendHandle,0x0001U,0,osWaitForever);
+	HAL_UART_Transmit_IT(&huart2,(uint8_t*)txbuffer,sizeof(txbuffer));
     osDelay(1);
   }
   /* USER CODE END Mandar_UART */

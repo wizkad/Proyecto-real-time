@@ -2,11 +2,11 @@
 CAD.formats=
 CAD.pinconfig=
 CAD.provider=
-FREERTOS.Events01=PinPolling,Dynamic,NULL
+FREERTOS.Events01=PinPolling,Dynamic,NULL;UARTsend,Dynamic,NULL
 FREERTOS.FootprintOK=true
 FREERTOS.IPParameters=Tasks01,FootprintOK,Events01,Mutexes01,Queues01
 FREERTOS.Mutexes01=Mutex,Dynamic,NULL
-FREERTOS.Queues01=frecuenciaUltrasonido,16,uint16_t,0,Dynamic,NULL,NULL;frecuenciaConstante,16,uint16_t,0,Dynamic,NULL,NULL;frecuenciaLog,16,uint16_t,0,Dynamic,NULL,NULL;MandarUARTqueue,16,uint16_t,0,Dynamic,NULL,NULL
+FREERTOS.Queues01=frecuenciaUltrasonido,16,uint16_t,0,Dynamic,NULL,NULL;frecuenciaConstante,16,uint16_t,0,Dynamic,NULL,NULL;frecuenciaLog,16,uint16_t,0,Dynamic,NULL,NULL;MandarUARTqueue,30,uint8_t,0,Dynamic,NULL,NULL
 FREERTOS.Tasks01=defaultTask,24,128,StartDefaultTask,Default,NULL,Dynamic,NULL,NULL;LecturaPin,32,128,LecturaPines,Default,NULL,Dynamic,NULL,NULL;ultrasound,32,128,Ultrasound,Default,NULL,Dynamic,NULL,NULL;Buzzer,32,128,BuzzerA,Default,NULL,Dynamic,NULL,NULL;RecibirUART,32,128,Recibir_UART,Default,NULL,Dynamic,NULL,NULL;MandarUART,24,128,Mandar_UART,Default,NULL,Dynamic,NULL,NULL
 File.Version=6
 GPIO.groupedBy=Group By Peripherals
