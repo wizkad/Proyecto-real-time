@@ -38,34 +38,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := joseba
+BUILD_ARTIFACT_NAME := Proyecto-real-time
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-joseba.elf \
+Proyecto-real-time.elf \
 
 MAP_FILES += \
-joseba.map \
+Proyecto-real-time.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-joseba.list \
+Proyecto-real-time.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: joseba.elf secondary-outputs
+main-build: Proyecto-real-time.elf secondary-outputs
 
 # Tool invocations
-joseba.elf joseba.map: $(OBJS) $(USER_OBJS) /home/jorgelarman/STM32CubeIDE/workspace_1.17.0/joseba/STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "joseba.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/jorgelarman/STM32CubeIDE/workspace_1.17.0/joseba/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="joseba.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Proyecto-real-time.elf Proyecto-real-time.map: $(OBJS) $(USER_OBJS) /home/jorgelarman/STM32CubeIDE/workspace_1.17.0/Proyecto-real-time/STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "Proyecto-real-time.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/jorgelarman/STM32CubeIDE/workspace_1.17.0/Proyecto-real-time/STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Proyecto-real-time.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -74,14 +74,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-joseba.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "joseba.list"
+Proyecto-real-time.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "Proyecto-real-time.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout joseba.elf joseba.list joseba.map
+	-$(RM) Proyecto-real-time.elf Proyecto-real-time.list Proyecto-real-time.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

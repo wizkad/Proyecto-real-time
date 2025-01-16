@@ -9,7 +9,7 @@
 #include <asm-generic/termbits-common.h>
 #include <pthread.h>
 
-#define SERIAL_PORT "/dev/ttyACM1" 
+#define SERIAL_PORT "/dev/ttyACM0" 
 #define BAUD_RATE B115200          
 
 int serial_port; 
